@@ -87,10 +87,10 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial e gratuita ao Gemini Flash corrigida
+                    # Chamada oficial com o modelo atualizado gemini-2.0-flash
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='gemini-2.0-flash',
                         contents=prompt,
                     )
                     
@@ -115,7 +115,6 @@ if arquivos:
                         precos_efetivos = []
                         totais_efetivos = []
                         
-                        # Considera fornecedor 0 de fora do estado (com imposto/frete) e demais locais
                         fora_do_estado = (idx == 0) 
 
                         for item in itens_IA:
@@ -125,8 +124,8 @@ if arquivos:
                             
                             custo = p_base
                             if fora_do_estado:
-                                custo = custo * fator_impostos  # Desconto SUFRAMA + PIS/COFINS
-                                custo += (peso * frete_fob)     # Adiciona Frete FOB
+                                custo = custo * fator_impostos  
+                                custo += (peso * frete_fob)     
                             
                             precos_efetivos.append(round(custo, 2))
                             totais_efetivos.append(round(custo * q, 2))
