@@ -16,11 +16,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🛒 CotaMap - Mapa de Cotação Inteligente com IA & Equalización Fiscal")
+st.title("🛒 CotaMap - Mapa de Cotação Inteligente & Equalização Fiscal")
 st.markdown("**Sistema de Suprimentos | Parente Andrade Ltda (Manaus - AM)**")
 st.divider()
 
-# 2. Configurações Fiscais e Logísticas na Barra Lateral
+# 2. Parâmetros Fiscais e Logísticos para Equalização Pós-Proposta
 st.sidebar.header("⚙️ Parâmetros Fiscais e Frete")
 icms_suframa = st.sidebar.number_input("Desconto ICMS - SUFRAMA (%)", value=7.0, step=1.0)
 pis_cofins = st.sidebar.number_input("Desconto PIS/COFINS (%)", value=9.25, step=0.01)
@@ -33,22 +33,22 @@ try:
 except:
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
 
-# 3. Área de Upload Pública
-st.subheader("1. Anexar Cotações dos Fornecedores (PDF)")
-st.info("Arraste os PDFs. A Inteligência Artificial fará a leitura, cruzamento de itens, verificação fiscal (DIFAL/ST interestadual vs Local) e cálculo de frete.")
+# 3. Área de Upload das Propostas Recebidas
+st.subheader("1. Anexar Propostas dos Fornecedores (PDF)")
+st.info("Faça o upload dos PDFs das propostas recebidas. Após o envio, o sistema fará a leitura, cruzamento dos itens e a conta minuciosa de equalização intermunicipal.")
 arquivos = st.file_uploader("Upload de Orçamentos", type=["pdf"], accept_multiple_files=True)
 
 if arquivos:
     if not gemini_key:
         st.error("⚠️ Chave de IA do servidor não configurada. Adicione a GEMINI_API_KEY nos Secrets do Streamlit.")
     else:
-        if st.button("🤖 Processar Análise Completa com IA", type="primary"):
-            with st.spinner("A IA está interpretando os PDFs, cruzando os itens e simulando a carga tributária (Manaus vs Fora do Estado)..."):
+        if st.button("📊 Processar Propostas e Executar Conta Minuciosa", type="primary"):
+            with st.spinner("Lendo propostas enviadas, cruzando itens e calculando os encargos intermunicipais e fretes..."):
                 
-                # Extração de texto dos PDFs
+                # Extração do texto de todas as propostas enviadas
                 texto_completo_pdfs = ""
                 for arquivo in arquivos:
-                    texto_completo_pdfs += f"\n\n--- FORNECEDOR / ARQUIVO: {arquivo.name} ---\n"
+                    texto_completo_pdfs += f"\n\n--- PROPOSTA / FORNECEDOR / ARQUIVO: {arquivo.name} ---\n"
                     try:
                         with pdfplumber.open(arquivo) as pdf:
                             for pagina in pdf.pages:
@@ -58,29 +58,28 @@ if arquivos:
                     except Exception as e:
                         st.error(f"Erro ao ler {arquivo.name}: {e}")
 
-                # Prompt avançado para a IA analisar fornecedores, localização, impostos e frete
+                # Prompt especializado focado na extração dos valores brutos das propostas enviadas
                 prompt = f"""
-                Você é um analista sênior de suprimentos e tributação fiscal com foco na Zona Franca de Manaus (Parente Andrade Ltda, Manaus/AM). 
-                Analise os textos extraídos dos PDFs de cotação dos fornecedores abaixo.
+                Você é um analista sênior de suprimentos e fiscal de Parente Andrade Ltda (Manaus/AM). 
+                Analise os textos extraídos dos PDFs de propostas enviadas por diferentes fornecedores.
                 
-                Regras obrigatórias para sua análise:
-                1. Identifique o nome de cada fornecedor e a cidade/estado de origem informada na cotação (ou deduza pelo contexto). Se for de Manaus/AM, classifique como local. Se for de outro estado, classifique como interestadual.
-                2. Padronize os itens equivalentes entre os orçamentos.
-                3. Extraia a quantidade, unidade, preço unitário bruto, peso estimado do item em Kg e o NCM (se houver).
-                4. Forneça uma análise comparativa inteligente apontando o melhor custo-benefício global.
+                Instruções:
+                1. Identifique o nome de cada fornecedor e o estado/cidade de origem constante na proposta.
+                2. Padronize os itens descritos nas propostas para permitir a comparação direta.
+                3. Extraia a quantidade, unidade, preço unitário bruto proposto, NCM (se houver) e estime o peso unitário em Kg de cada item.
 
                 Retorne estritamente um objeto JSON válido, sem formatação markdown (sem ```json), exatamente neste formato:
                 {{
-                  "analise_geral": "Texto detalhado com a análise comparativa dos fornecedores, ressaltando vantagens e prazos.",
+                  "analise_propostas": "Parecer detalhado comparando as propostas enviadas, indicando as condições de pagamento e prazos.",
                   "fornecedores_info": [
                     {{
                       "nome": "Nome do Fornecedor 1",
-                      "estado": "AM",
+                      "cidade_estado": "Manaus - AM",
                       "local": true
                     }},
                     {{
                       "nome": "Nome do Fornecedor 2",
-                      "estado": "SP",
+                      "cidade_estado": "São Paulo - SP",
                       "local": false
                     }}
                   ],
@@ -91,7 +90,7 @@ if arquivos:
                       "quantidade": 10.0,
                       "peso_unitario_kg": 1.5,
                       "ncm": "8536.20.00",
-                      "precos_unitarios": {{
+                      "precos_unitarios_brutos": {{
                         "Nome do Fornecedor 1": 150.00,
                         "Nome do Fornecedor 2": 145.50
                       }}
@@ -99,7 +98,7 @@ if arquivos:
                   ]
                 }}
 
-                Textos das cotações:
+                Textos das propostas enviadas:
                 {texto_completo_pdfs}
                 """
 
@@ -113,17 +112,16 @@ if arquivos:
                     texto_resposta = resposta.text.replace("```json", "").replace("```", "").strip()
                     dados_json = json.loads(texto_resposta)
                     
-                    analise_texto = dados_json.get("analise_geral", "Análise concluída.")
+                    analise_texto = dados_json.get("analise_propostas", "Propostas processadas.")
                     fornecedores_objs = dados_json.get("fornecedores_info", [])
                     itens_IA = dados_json.get("itens", [])
 
-                    # Exibe a Análise da IA
-                    st.success("✅ Análise e Inteligência Tributária concluídas com sucesso!")
-                    st.markdown("### 🧠 Parecer Técnico da IA")
+                    st.success("✅ Propostas processadas e equalizadas com sucesso!")
+                    st.markdown("### 📋 Parecer de Análise das Propostas")
                     st.info(analise_texto)
                     st.divider()
 
-                    # Montagem da Tabela Comparativa de Custos Efetivos
+                    # Montagem da tabela comparativa detalhada pós-envio
                     tabela_dados = {
                         "Item": [i["descricao"] for i in itens_IA],
                         "NCM": [i.get("ncm", "N/D") for i in itens_IA],
@@ -131,8 +129,8 @@ if arquivos:
                         "Qtd.": [i["quantidade"] for i in itens_IA],
                     }
 
-                    fator_suframa = 1.0 - ((icms_suframa + pis_cofins) / 100.0)
                     totais_por_fornecedor = {}
+                    fator_suframa_pis = 1.0 - ((icms_suframa + pis_cofins) / 100.0)
 
                     for forn_info in fornecedores_objs:
                         forn_nome = forn_info["nome"]
@@ -143,37 +141,40 @@ if arquivos:
                         soma_total_forn = 0.0
 
                         for item in itens_IA:
-                            p_base_raw = item.get("precos_unitarios", {}).get(forn_nome)
-                            p_base = float(p_base_raw) if p_base_raw is not None else 0.0
+                            p_bruto_raw = item.get("precos_unitarios_brutos", {}).get(forn_nome)
+                            p_bruto = float(p_bruto_raw) if p_bruto_raw is not None else 0.0
                             peso = float(item.get("peso_unitario_kg") or 0.5)
                             q = float(item.get("quantidade") or 1.0)
                             
-                            custo_unit = p_base
+                            custo_final = p_bruto
                             
                             if is_local:
-                                # Fornecedor de Manaus/AM: Imposto 0 (operação interna incentivada / sem incidência adicional de frete FOB interestadual)
-                                custo_unit = p_base
+                                # Fornecedor de Manaus/AM: Imposto 0 (operação interna sem DIFAL/ST interestadual e sem frete FOB longo)
+                                custo_final = p_bruto
                             else:
-                                # Fornecedor de Outro Estado: Aplica desoneração SUFRAMA/PIS-COFINS + Frete FOB proporcional + simulação de impacto tributário (DIFAL/ST)
-                                custo_unit = custo_unit * fator_suframa
-                                frete_proporcional = peso * frete_fob_kg
-                                # Simulação de DIFAL / Substituição Tributária para uso/consumo ou revenda interestadual
-                                difal_estimado = (aliquota_interna_am - 7.0) / 100.0 * p_base if aliquota_interna_am > 7.0 else 0.0
-                                custo_unit += frete_proporcional + (difal_estimado * 0.2) # Impacto parcial de regulação
+                                # Fornecedor de Outro Estado: Executa a conta minuciosa intermunicipal
+                                # 1. Abatimento de incentivos (Suframa + PIS/Cofins)
+                                base_incentivada = p_bruto * fator_suframa_pis
+                                # 2. Cálculo do Frete FOB proporcional ao peso do item
+                                frete_item = peso * frete_fob_kg
+                                # 3. Comparativo de ICMS Intermunicipal (DIFAL / ST estimado com base na alíquota interna de AM vs 7% interestadual)
+                                difal_st = (aliquota_interna_am - 7.0) / 100.0 * p_bruto if aliquota_interna_am > 7.0 else 0.0
+                                
+                                custo_final = base_incentivada + frete_item + (difal_st * 0.25)
 
-                            t_item = round(custo_unit * q, 2)
-                            precos_efetivos.append(round(custo_unit, 2))
+                            t_item = round(custo_final * q, 2)
+                            precos_efetivos.append(round(custo_final, 2))
                             totais_efetivos.append(t_item)
                             soma_total_forn += t_item
 
-                        tabela_dados[f"{forn_nome} (Unit. Efetivo)"] = precos_efetivos
-                        tabela_dados[f"{forn_nome} (Total)"] = totais_efetivos
+                        tabela_dados[f"{forn_nome} (Unit. Equalizado)"] = precos_efetivos
+                        tabela_dados[f"{forn_nome} (Total Final)"] = totais_efetivos
                         totais_por_fornecedor[forn_nome] = soma_total_forn
 
                     df_mapa = pd.DataFrame(tabela_dados)
 
-                    st.subheader("2. Mapa Comparativo de Custo Efetivo (Equalizado com Impostos e Frete)")
-                    st.markdown("*Para fornecedores locais (Manaus/AM): Impostos zerados. Para interestaduais: Considerado incentivo SUFRAMA, frete FOB por peso e impacto de DIFAL/ST.*")
+                    st.subheader("2. Mapa Comparativo de Custos Pós-Proposta (Conta Minuciosa Intermunicipal)")
+                    st.markdown("*Demonstrativo com a aplicação de imposto zero para fornecedores locais de Manaus e equalização completa (Suframa, Frete FOB e DIFAL/ST) para os demais estados.*")
 
                     def destacar_colunas(x):
                         df_estilo = pd.DataFrame('', index=x.index, columns=x.columns)
@@ -181,8 +182,8 @@ if arquivos:
                         for idx, forn_info in enumerate(fornecedores_objs):
                             cor = cores[idx % len(cores)]
                             f_name = forn_info["nome"]
-                            col_unit = f"{f_name} (Unit. Efetivo)"
-                            col_tot = f"{f_name} (Total)"
+                            col_unit = f"{f_name} (Unit. Equalizado)"
+                            col_tot = f"{f_name} (Total Final)"
                             if col_unit in df_estilo.columns:
                                 df_estilo[col_unit] = f'background-color: {cor}'
                                 df_estilo[col_tot] = f'background-color: {cor}'
@@ -194,7 +195,7 @@ if arquivos:
                         hide_index=True
                     )
 
-                    # Painel de Fechamento, Métricas e Sugestão do Vencedor
+                    # Painel de Fechamento e Sugestão do Vencedor Baseado no Custo Efetivo Total
                     st.markdown("<br>", unsafe_allow_html=True)
                     cols = st.columns(len(fornecedores_objs) if len(fornecedores_objs) > 0 else 1)
                     
@@ -210,19 +211,19 @@ if arquivos:
                             melhor_fornecedor = f_name
 
                         with cols[idx]:
-                            st.metric(label=f"Custo Total - {f_name}", value=f"R$ {total_fornecedor:,.2f}")
+                            st.metric(label=f"Total Final - {f_name}", value=f"R$ {total_fornecedor:,.2f}")
                             st.button(f"Gerar OC - {f_name}", key=f"btn_oc_{idx}", use_container_width=True)
 
-                    # Destaque para o Vencedor Recomendado
+                    # Destaque do Vencedor Recomendado
                     if melhor_fornecedor:
                         st.markdown(f"""
                             <div class="winner-box">
                                 <h3>🏆 Sugestão de Fornecedor Vencedor: <b>{melhor_fornecedor}</b></h3>
-                                <p>Com base na equalização de impostos (ZFM/Suframa), incidência de frete FOB proporcional por peso e análise de itens, este fornecedor apresentou o <b>menor Custo Efetivo Total (R$ {menor_valor:,.2f})</b> para a Parente Andrade.</p>
+                                <p>Após a análise das propostas e a conta minuciosa de equalização fiscal intermunicipal (considerando isenção local ou encargos de frete FOB, Suframa e DIFAL para outros estados), o fornecedor com o <b>menor Custo Efetivo Total é {melhor_fornecedor} (R$ {menor_valor:,.2f})</b>.</p>
                             </div>
                         """, unsafe_allow_html=True)
 
                 except Exception as e:
-                    st.error(f"Erro ao processar os dados com a IA: {e}")
+                    st.error(f"Erro ao processar as propostas com a IA: {e}")
 else:
-    st.info("👆 Faça o upload dos PDFs dos fornecedores para iniciar a equalização fiscal e logística automática.")
+    st.info("👆 Faça o upload dos PDFs das propostas recebidas para iniciar a equalização e comparação intermunicipal.")
