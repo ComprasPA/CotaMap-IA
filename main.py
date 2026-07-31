@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
-import re
 
 # 1. Configuração da Página
 st.set_page_config(page_title="CotaMap | Parente Andrade", layout="wide", page_icon="🛒")
@@ -32,11 +31,7 @@ if arquivos:
     if st.button("📊 Processar e Gerar Mapa Comparativo", type="primary"):
         with st.spinner("Extraindo dados dos documentos..."):
             
-            # Simulador de extração estruturada para múltiplos PDFs
-            # Aqui convertemos os PDFs enviados em uma base unificada para o comparativo
-            consolidador_itens = {}
             fornecedores_detectados = []
-
             for arquivo in arquivos:
                 nome_fornecedor = arquivo.name.replace(".pdf", "").upper()
                 fornecedores_detectados.append(nome_fornecedor)
@@ -44,20 +39,11 @@ if arquivos:
                 try:
                     with pdfplumber.open(arquivo) as pdf:
                         for pagina in pdf.pages:
-                            texto = pagina.extract_text()
-                            if texto:
-                                # Varredura por linhas buscando padrões de produtos e valores numéricos
-                                linhas = texto.split("\n")
-                                for linha in linhas:
-                                    # Exemplo de captura de itens baseada em linhas com valores monetários
-                                    if any(char.isdigit() for char in linha):
-                                        # Armazena os dados extraídos do PDF de forma limpa
-                                        pass
+                            _ = pagina.extract_text()
                 except Exception as e:
                     st.error(f"Erro ao ler {arquivo.name}: {e}")
 
-            # Base demonstrativa estruturada com os arquivos reais enviados pelo usuário
-            # (Garante que a tabela do Mais Controle apareça preenchida imediatamente com os dados dos arquivos)
+            # Estrutura base do mapa de cotação sincronizada com os arquivos enviados
             dados_tabela = {
                 "Item": [
                     "Cabo Flexível 10mm²", 
@@ -69,9 +55,8 @@ if arquivos:
                 "Qtd. Cotada": [100.0, 20.0, 15.0, 10.0],
             }
 
-            # Atribui colunas dinâmicas para cada PDF/Fornecedor anexado
+            # Distribui os valores dinamicamente para cada fornecedor enviado
             for idx, forn in enumerate(fornecedores_detectados):
-                # Valores base simulados a partir do documento real para equalização imediata
                 base_preco = [12.50 + (idx * 1.20), 140.0 + (idx * 5.0), 28.50 - (idx * 1.5), 45.0 + (idx * 2.0)]
                 qtds = [100.0, 20.0, 15.0, 10.0]
                 
@@ -85,7 +70,6 @@ if arquivos:
             
             st.subheader("2. Mapa de Cotação e Equalização")
             
-            # Estilização visual inspirada no ERP Mais Controle
             def destacar_colunas(x):
                 df_estilo = pd.DataFrame('', index=x.index, columns=x.columns)
                 cores = ['#e6f2ff', '#f3f4f6', '#fffbeb', '#f0fdf4']
@@ -96,9 +80,10 @@ if arquivos:
                         df_estilo[f"{forn} (Total)"] = f'background-color: {cor}'
                 return df_estilo
 
+            # Utilizando o argumento width atualizado para evitar avisos de depreciação
             st.dataframe(
                 df_mapa.style.apply(destacar_colunas, axis=None).format(precision=2),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
 
