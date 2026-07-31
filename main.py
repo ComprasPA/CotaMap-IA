@@ -3,6 +3,7 @@ import pandas as pd
 import pdfplumber
 from anthropic import Anthropic
 import json
+import os
 
 # 1. Configuração da Página
 st.set_page_config(page_title="CotaMap | Parente Andrade", layout="wide", page_icon="🛒")
@@ -18,9 +19,11 @@ st.title("🛒 CotaMap - Mapa de Cotação Inteligente")
 st.markdown("**Empresa:** Parente Andrade Ltda | **Regime:** Lucro Real")
 st.divider()
 
-# 2. Configurações e Chave de API
+# 2. Configurações e Chave de API (Busca automática do ambiente ou manual na barra lateral)
+api_key_env = os.environ.get("ANTHROPIC_API_KEY", "")
+
 st.sidebar.header("⚙️ Configurações do Sistema")
-api_key = st.sidebar.text_input("Chave API da Anthropic (Claude):", type="password")
+api_key = st.sidebar.text_input("Chave API da Anthropic (Claude):", value=api_key_env, type="password")
 
 st.sidebar.markdown("---")
 icms_desc = st.sidebar.number_input("Desconto ICMS - SUFRAMA (%)", value=7.0, step=1.0)
@@ -101,7 +104,6 @@ if arquivos:
                             "Unid.": item.get("unidade"),
                             "Qtd.": item.get("quantidade"),
                         }
-                        # Puxando o preço unitário e calculando o total por fornecedor
                         for forn in dados_json.get("fornecedores", []):
                             preco_unit = item.get("precos_unitarios", {}).get(forn, 0.0)
                             linha[f"{forn} (Unit)"] = preco_unit
@@ -111,10 +113,9 @@ if arquivos:
                     
                     df_mapa = pd.DataFrame(linhas)
                     
-                    # Estilizando para simular o layout corporativo
                     def pintar_fundo_colunas(x):
                         df_estilo = pd.DataFrame('', index=x.index, columns=x.columns)
-                        cores = ['#e6f2ff', '#f3f4f6', '#fffbeb'] # Azul, Cinza e Amarelo clarinhos
+                        cores = ['#e6f2ff', '#f3f4f6', '#fffbeb']
                         
                         fornecedores = dados_json.get("fornecedores", [])
                         for idx, forn in enumerate(fornecedores):
@@ -130,11 +131,7 @@ if arquivos:
                         hide_index=True
                     )
                     
-                    st.info("💡 Neste ponto da arquitetura, podemos plugar as lógicas de impostos em cima desses valores reais extraídos.")
-                    
                 except Exception as e:
                     st.error(f"Ocorreu um erro na comunicação com a IA ou no formato dos dados: {e}")
-                    with st.expander("Ver detalhes do erro"):
-                        st.write(e)
 else:
-    st.info("👆 Faça o upload de orçamentos reais em PDF para testar a extração.")
+    st.info("👆 Faça o upload de orçamentos reais em PDF para iniciar a leitura.")
