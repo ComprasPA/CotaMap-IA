@@ -6,7 +6,7 @@ import json
 import os
 
 # 1. Configuração da Página
-st.set_page_config(page_title="CotaMap | Parente Andrade", layout="wide", page_icon="🛒")
+st.set_page_config(page_title="CotaMap | App Aberto", layout="wide", page_icon="🛒")
 
 st.markdown("""
     <style>
@@ -16,32 +16,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🛒 CotaMap - Mapa de Cotação Inteligente")
-st.markdown("**Empresa:** Parente Andrade Ltda | **Regime:** Lucro Real")
+st.markdown("**Sistema Aberto de Equalização de Compras**")
 st.divider()
 
-# 2. Configurações e Chave de API 
-api_key_env = os.environ.get("GEMINI_API_KEY", "")
+# 2. Resgate Seguro da Chave de API (Invisível para o usuário final)
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except:
+    api_key = os.environ.get("GEMINI_API_KEY", "")
 
-st.sidebar.header("⚙️ Configurações do Sistema")
-api_key = st.sidebar.text_input("Chave API Gratuita (Google Gemini):", value=api_key_env, type="password")
-
-st.sidebar.markdown("---")
-icms_desc = st.sidebar.number_input("Desconto ICMS - SUFRAMA (%)", value=7.0, step=1.0)
+st.sidebar.header("⚙️ Configurações Fiscais")
+icms_desc = st.sidebar.number_input("Desconto ICMS (%)", value=7.0, step=1.0)
 pis_cofins = st.sidebar.number_input("Desconto PIS/COFINS (%)", value=9.25, step=0.01)
 
 # 3. Área de Upload
 st.subheader("1. Anexar Cotações")
-st.info("Arraste os PDFs dos fornecedores. O Google Gemini fará a leitura e o cruzamento dos itens gratuitamente.")
+st.info("Arraste os PDFs dos fornecedores. A Inteligência Artificial fará a leitura e o cruzamento dos itens.")
 arquivos = st.file_uploader("Upload de Orçamentos (Apenas PDF)", type=["pdf"], accept_multiple_files=True)
 
 if arquivos:
     if not api_key:
-        st.warning("⚠️ Insira a sua Chave API do Gemini na barra lateral para iniciar a leitura.")
+        st.error("⚠️ O administrador do sistema ainda não configurou a chave da IA no cofre do servidor.")
     else:
         if st.button("🤖 Processar PDFs e Gerar Mapa", type="primary"):
             with st.spinner("Lendo PDFs e cruzando itens com IA... Isso pode levar alguns segundos."):
                 
-                # Extraindo o texto de todos os PDFs
                 textos_cotacoes = ""
                 for i, arquivo in enumerate(arquivos):
                     texto_pdf = f"\n--- INÍCIO DA COTAÇÃO {i+1} ({arquivo.name}) ---\n"
@@ -55,7 +54,6 @@ if arquivos:
                     except Exception as e:
                         st.error(f"Erro ao ler o arquivo {arquivo.name}: {e}")
                 
-                # Configurando e Chamando o Gemini
                 genai.configure(api_key=api_key)
                 
                 prompt = f"""
@@ -83,7 +81,6 @@ if arquivos:
                 """
                 
                 try:
-                    # Usando o modelo flash, que é super rápido e ótimo para extração de texto
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     resposta = model.generate_content(
                         prompt,
@@ -95,8 +92,7 @@ if arquivos:
                     
                     dados_json = json.loads(resposta.text)
                     
-                    # 4. Construindo a Tabela Dinâmica
-                    st.success("✅ Extração concluída com sucesso via Google Gemini!")
+                    st.success("✅ Extração concluída com sucesso via IA!")
                     st.divider()
                     
                     st.subheader("2. Mapa de Cotação Estruturado")
@@ -138,4 +134,4 @@ if arquivos:
                 except Exception as e:
                     st.error(f"Ocorreu um erro na comunicação com a IA ou no formato dos dados: {e}")
 else:
-    st.info("👆 Faça o upload de orçamentos reais em PDF para iniciar a leitura.")
+    st.info("👆 Faça o upload de orçamentos em PDF para iniciar a análise automatizada.")
