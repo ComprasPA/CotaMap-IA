@@ -58,7 +58,6 @@ if arquivos:
                     except Exception as e:
                         st.error(f"Erro ao ler {arquivo.name}: {e}")
 
-                # Prompt especializado focado na extração dos valores brutos das propostas enviadas
                 prompt = f"""
                 Você é um analista sênior de suprimentos e fiscal de Parente Andrade Ltda (Manaus/AM). 
                 Analise os textos extraídos dos PDFs de propostas enviadas por diferentes fornecedores.
@@ -103,9 +102,10 @@ if arquivos:
                 """
 
                 try:
+                    # Chamada utilizando o modelo ativo e estável gemini-3.6-flash
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=prompt,
                     )
                     
@@ -121,7 +121,6 @@ if arquivos:
                     st.info(analise_texto)
                     st.divider()
 
-                    # Montagem da tabela comparativa detalhada pós-envio
                     tabela_dados = {
                         "Item": [i["descricao"] for i in itens_IA],
                         "NCM": [i.get("ncm", "N/D") for i in itens_IA],
@@ -149,15 +148,12 @@ if arquivos:
                             custo_final = p_bruto
                             
                             if is_local:
-                                # Fornecedor de Manaus/AM: Imposto 0 (operação interna sem DIFAL/ST interestadual e sem frete FOB longo)
+                                # Fornecedor de Manaus/AM: Imposto 0 (operação interna sem DIFAL/ST e sem frete FOB interestadual)
                                 custo_final = p_bruto
                             else:
                                 # Fornecedor de Outro Estado: Executa a conta minuciosa intermunicipal
-                                # 1. Abatimento de incentivos (Suframa + PIS/Cofins)
                                 base_incentivada = p_bruto * fator_suframa_pis
-                                # 2. Cálculo do Frete FOB proporcional ao peso do item
                                 frete_item = peso * frete_fob_kg
-                                # 3. Comparativo de ICMS Intermunicipal (DIFAL / ST estimado com base na alíquota interna de AM vs 7% interestadual)
                                 difal_st = (aliquota_interna_am - 7.0) / 100.0 * p_bruto if aliquota_interna_am > 7.0 else 0.0
                                 
                                 custo_final = base_incentivada + frete_item + (difal_st * 0.25)
@@ -195,7 +191,6 @@ if arquivos:
                         hide_index=True
                     )
 
-                    # Painel de Fechamento e Sugestão do Vencedor Baseado no Custo Efetivo Total
                     st.markdown("<br>", unsafe_allow_html=True)
                     cols = st.columns(len(fornecedores_objs) if len(fornecedores_objs) > 0 else 1)
                     
@@ -214,7 +209,6 @@ if arquivos:
                             st.metric(label=f"Total Final - {f_name}", value=f"R$ {total_fornecedor:,.2f}")
                             st.button(f"Gerar OC - {f_name}", key=f"btn_oc_{idx}", use_container_width=True)
 
-                    # Destaque do Vencedor Recomendado
                     if melhor_fornecedor:
                         st.markdown(f"""
                             <div class="winner-box">
