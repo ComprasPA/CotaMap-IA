@@ -34,7 +34,7 @@ except:
 
 # 3. Área de Upload das Propostas Brutas
 st.subheader("1. Anexar Propostas dos Fornecedores (PDF)")
-st.info("Faça o upload dos PDFs das propostas. A IA fará a leitura dos valores brutos e, em seguida, o sistema executará a conta minuciosa de equalização intermunicipal (Frete, ICMS ST, DIFAL e Descontos).")
+st.info("Faça o upload dos PDFs das propostas. A IA fará a leitura dos valores brutos e, em seguida, o sistema executará a conta minuciosa de equalização intermunicipal (Frete, ICMS ST, DIFAL e Descontos) conforme as diretrizes da Sefaz.")
 arquivos = st.file_uploader("Upload de Orçamentos", type=["pdf"], accept_multiple_files=True)
 
 if arquivos:
@@ -105,9 +105,10 @@ if arquivos:
                 """
 
                 try:
+                    # Chamada oficial utilizando o modelo estável gemini-2.0-flash
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-2.0-flash',
                         contents=prompt,
                     )
                     
@@ -123,9 +124,9 @@ if arquivos:
                     st.info(analise_texto)
                     st.divider()
 
-                    # Exibição interativa para ajuste dos encargos por fornecedor (igual à planilha de referência)
+                    # Exibição interativa para ajuste dos encargos por fornecedor (idêntico à planilha de equalização)
                     st.subheader("2. Matriz de Equalização Intermunicipal (Impostos, Frete e Descontos)")
-                    st.markdown("*Insira abaixo os valores de Frete, Descontos, ICMS ST e DIFAL apurados para cada proposta (seguindo o modelo da sua planilha de cálculo).*")
+                    st.markdown("*Insira abaixo os valores de Frete, Descontos, ICMS ST e DIFAL apurados para cada proposta.*")
 
                     fornecedores_resultados = {}
                     colunas_forn = st.columns(len(fornecedores_objs) if len(fornecedores_objs) > 0 else 1)
@@ -138,11 +139,9 @@ if arquivos:
                             st.markdown(f"#### 🏢 {f_name}")
                             st.caption(f"Origem: {forn_info.get('cidade_estado', 'Desconhecida')}")
                             
-                            # Calcula o total bruto inicial dos itens para este fornecedor
                             total_bruto_f = sum([float(i.get("precos_unitarios_brutos", {}).get(f_name, 0.0)) * float(i.get("quantidade", 1.0)) for i in itens_IA])
                             st.metric(label="Total Bruto", value=f"R$ {total_bruto_f:,.2f}")
 
-                            # Campos ajustáveis idênticos à planilha de Excel
                             desc_perc = st.number_input(f"Desconto (%) - {f_name}", value=0.0, step=1.0, key=f"desc_{idx}") / 100.0
                             
                             if is_local:
@@ -154,14 +153,12 @@ if arquivos:
                                 st.warning("⚠️ Fornecedor Interestadual: Sujeito a DIFAL, ST e Frete FOB")
                                 icms_st_val = st.number_input(f"ICMS ST (Fator/Alíquota) - {f_name}", value=0.7, step=0.1, key=f"st_{idx}")
                                 
-                                # Cálculo automático de DIFAL baseado na calculadora padrão
                                 base_difal = total_bruto_f * (1.0 - desc_perc)
                                 difal_calculado = base_difal * (aliquota_destino - aliquota_origem + fcp_percentual)
                                 difal_val = st.number_input(f"DIFAL (R$) - {f_name}", value=round(difal_calculado, 2), step=100.0, key=f"difal_{idx}")
                                 
                                 frete_val = st.number_input(f"Frete FOB (R$) - {f_name}", value=3200.0, step=100.0, key=f"frete_{idx}")
 
-                            # Total Geral Equalizado para o fornecedor
                             total_liquido = total_bruto_f * (1.0 - desc_perc)
                             total_geral_forn = total_liquido + frete_val + difal_val
                             
@@ -180,7 +177,6 @@ if arquivos:
                     st.divider()
                     st.subheader("3. Mapa Comparativo Consolidado e Sugestão de Vencedor")
 
-                    # Montagem da tabela consolidada idêntica à planilha de Cotação
                     tabela_comparativa = []
                     melhor_fornecedor = None
                     menor_valor_geral = float('inf')
@@ -219,7 +215,6 @@ if arquivos:
                         hide_index=True
                     )
 
-                    # Destaque do Fornecedor Vencedor Recomendado
                     if melhor_fornecedor:
                         st.markdown(f"""
                             <div class="winner-box">
