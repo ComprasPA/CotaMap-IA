@@ -86,10 +86,10 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial com o modelo gemini-2.5-flash atualizado
+                    # Chamada oficial com o modelo atualizado gemini-3.6-flash
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=prompt,
                     )
                     
@@ -167,6 +167,6 @@ if arquivos:
                                 st.button(f"Gerar OC - {forn}", key=f"btn_ia_{idx}", use_container_width=True)
 
                 except Exception as e:
-                    st.error(f"Erro ao processar os dados com a IA (Aguarde alguns segundos se atingiu o limite de cota): {e}")
+                    st.error(f"Erro ao processar os dados com a IA: {e}")
 else:
     st.info("👆 Faça o upload dos PDFs dos fornecedores para a IA iniciar a equalização automática.")
