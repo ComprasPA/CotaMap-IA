@@ -56,7 +56,6 @@ if arquivos:
                     except Exception as e:
                         st.error(f"Erro ao ler {arquivo.name}: {e}")
 
-                # Prompt especializado para a IA estruturar a cotação
                 prompt = f"""
                 Você é um analista sênior de suprimentos e compras industriais. 
                 Analise os textos extraídos dos PDFs de cotação de diferentes fornecedores abaixo.
@@ -87,21 +86,19 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial com o modelo atualizado gemini-2.0-flash
+                    # Utilizando o modelo gemini-1.5-flash otimizado para maior estabilidade de cota gratuita
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.0-flash',
+                        model='gemini-1.5-flash',
                         contents=prompt,
                     )
                     
-                    # Tratamento da resposta da IA
                     texto_resposta = resposta.text.replace("```json", "").replace("```", "").strip()
                     dados_json = json.loads(texto_resposta)
                     
                     fornecedores = dados_json.get("fornecedores", [])
                     itens_IA = dados_json.get("itens", [])
 
-                    # Montando a tabela estruturada com base na inteligência da IA
                     tabela_dados = {
                         "Item": [item["descricao"] for item in itens_IA],
                         "Unid.": [item["unidade"] for item in itens_IA],
@@ -110,7 +107,6 @@ if arquivos:
 
                     fator_impostos = 1.0 - ((icms_desc + pis_cofins) / 100.0)
 
-                    # Preenchendo os valores por fornecedor com aplicação de impostos e frete FOB
                     for idx, forn in enumerate(fornecedores):
                         precos_efetivos = []
                         totais_efetivos = []
@@ -159,7 +155,6 @@ if arquivos:
                         hide_index=True
                     )
 
-                    # Painel de Fechamento e Pedidos
                     st.markdown("<br>", unsafe_allow_html=True)
                     cols = st.columns(len(fornecedores) if len(fornecedores) > 0 else 1)
                     
@@ -172,6 +167,6 @@ if arquivos:
                                 st.button(f"Gerar OC - {forn}", key=f"btn_ia_{idx}", use_container_width=True)
 
                 except Exception as e:
-                    st.error(f"Erro ao processar os dados com a IA: {e}")
+                    st.error(f"Erro ao processar os dados com a IA (Limite de cota atingido ou erro de formato): {e}")
 else:
     st.info("👆 Faça o upload dos PDFs dos fornecedores para a IA iniciar a equalização automática.")
