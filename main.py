@@ -42,12 +42,10 @@ st.markdown("A tabela abaixo já deduz os impostos de fora do estado e **soma o 
 
 def calcular_custo_efetivo(preco, peso, tipo_frete, fora_do_estado):
     custo_final = preco
-    # Aplica desoneração para compras interestaduais (ZFM)
     if fora_do_estado:
         desconto_total = (icms_desc + pis_cofins) / 100
         custo_final = custo_final * (1 - desconto_total)
     
-    # Adiciona custo de frete se for FOB
     if tipo_frete == "FOB":
         custo_final += (peso * frete_fob)
         
