@@ -86,10 +86,10 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial com o modelo atualizado gemini-3.6-flash
+                    # Chamada oficial com o modelo gemini-2.5-flash atualizado
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-3.6-flash',
+                        model='gemini-2.5-flash',
                         contents=prompt,
                     )
                     
@@ -99,10 +99,19 @@ if arquivos:
                     fornecedores = dados_json.get("fornecedores", [])
                     itens_IA = dados_json.get("itens", [])
 
+                    descricoes = []
+                    unidades = []
+                    quantidades = []
+
+                    for item in itens_IA:
+                        descricoes.append(item.get("descricao", "Item sem descrição"))
+                        unidades.append(item.get("unidade", "UN"))
+                        quantidades.append(float(item.get("quantidade") or 1.0))
+
                     tabela_dados = {
-                        "Item": [item["descricao"] for item in itens_IA],
-                        "Unid.": [item["unidade"] for item in itens_IA],
-                        "Qtd.": [item["quantidade"] for item in itens_IA],
+                        "Item": descricoes,
+                        "Unid.": unidades,
+                        "Qtd.": quantidades,
                     }
 
                     fator_impostos = 1.0 - ((icms_desc + pis_cofins) / 100.0)
@@ -114,9 +123,11 @@ if arquivos:
                         fora_do_estado = (idx == 0) 
 
                         for item in itens_IA:
-                            p_base = item.get("precos_unitarios", {}).get(forn, 0.0)
-                            peso = item.get("peso_unitario_kg", 0.5)
-                            q = item.get("quantidade", 1.0)
+                            p_base_raw = item.get("precos_unitarios", {}).get(forn)
+                            p_base = float(p_base_raw) if p_base_raw is not None else 0.0
+                            
+                            peso = float(item.get("peso_unitario_kg") or 0.5)
+                            q = float(item.get("quantidade") or 1.0)
                             
                             custo = p_base
                             if fora_do_estado:
