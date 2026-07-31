@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
-import google.generativeai as genai
+from google import genai
 import json
-import os
 
 # 1. Configuração da Página
-st.set_page_config(page_title="CotaMap | App Aberto", layout="wide", page_icon="🛒")
+st.set_page_config(page_title="CotaMap | Parente Andrade", layout="wide", page_icon="🛒")
 
 st.markdown("""
     <style>
@@ -19,12 +18,11 @@ st.title("🛒 CotaMap - Mapa de Cotação Inteligente")
 st.markdown("**Sistema Aberto de Equalização de Compras**")
 st.divider()
 
-# 2. Resgate Seguro da Chave de API (Invisível para o usuário final)
-try:
-    api_key = st.secrets["GEMINI_API_KEY"]
-except:
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+# 2. Chave de API na barra lateral
+st.sidebar.header("⚙️ Configurações da IA")
+api_key = st.sidebar.text_input("Cole sua Chave API do Gemini:", type="password")
 
+st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Configurações Fiscais")
 icms_desc = st.sidebar.number_input("Desconto ICMS (%)", value=7.0, step=1.0)
 pis_cofins = st.sidebar.number_input("Desconto PIS/COFINS (%)", value=9.25, step=0.01)
@@ -36,7 +34,7 @@ arquivos = st.file_uploader("Upload de Orçamentos (Apenas PDF)", type=["pdf"], 
 
 if arquivos:
     if not api_key:
-        st.error("⚠️ O administrador do sistema ainda não configurou a chave da IA no cofre do servidor.")
+        st.warning("⚠️ Insira a sua Chave API do Gemini na barra lateral para iniciar a leitura.")
     else:
         if st.button("🤖 Processar PDFs e Gerar Mapa", type="primary"):
             with st.spinner("Lendo PDFs e cruzando itens com IA... Isso pode levar alguns segundos."):
@@ -53,8 +51,6 @@ if arquivos:
                         textos_cotacoes += texto_pdf
                     except Exception as e:
                         st.error(f"Erro ao ler o arquivo {arquivo.name}: {e}")
-                
-                genai.configure(api_key=api_key)
                 
                 prompt = f"""
                 Você é um especialista em suprimentos e compras industriais. Analise os textos das cotações abaixo.
@@ -81,16 +77,16 @@ if arquivos:
                 """
                 
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    resposta = model.generate_content(
-                        prompt,
-                        generation_config=genai.GenerationConfig(
-                            response_mime_type="application/json",
-                            temperature=0.1
-                        )
+                    # Inicializando o cliente moderno do Gemini
+                    client = genai.Client(api_key=api_key)
+                    resposta = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
                     )
                     
-                    dados_json = json.loads(resposta.text)
+                    # Limpando eventuais marcações de bloco de código que a IA possa retornar
+                    texto_resposta = resposta.text.replace("```json", "").replace("```", "").strip()
+                    dados_json = json.loads(texto_resposta)
                     
                     st.success("✅ Extração concluída com sucesso via IA!")
                     st.divider()
