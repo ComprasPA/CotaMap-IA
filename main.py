@@ -86,10 +86,10 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial com o modelo estável gemini-2.5-flash
+                    # Chamada oficial com o modelo atualizado e estável gemini-3.6-flash
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=prompt,
                     )
                     
