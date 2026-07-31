@@ -87,10 +87,10 @@ if arquivos:
                 """
 
                 try:
-                    # Chamada oficial e gratuita ao Gemini Flash
+                    # Chamada oficial e gratuita ao Gemini Flash corrigida
                     client = genai.Client(api_key=gemini_key)
                     resposta = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-1.5-flash',
                         contents=prompt,
                     )
                     
@@ -115,7 +115,7 @@ if arquivos:
                         precos_efetivos = []
                         totais_efetivos = []
                         
-                        # Considera fornecedor 0 de fora do estado (com imposto/frete) e demais locais (ou ajustável)
+                        # Considera fornecedor 0 de fora do estado (com imposto/frete) e demais locais
                         fora_do_estado = (idx == 0) 
 
                         for item in itens_IA:
@@ -161,7 +161,7 @@ if arquivos:
                     )
 
                     # Painel de Fechamento e Pedidos
-                    st.markdown("<br>", unsafe_allow_inner=True if hasattr(st, 'markdown') else False)
+                    st.markdown("<br>", unsafe_allow_html=True)
                     cols = st.columns(len(fornecedores) if len(fornecedores) > 0 else 1)
                     
                     for idx, forn in enumerate(fornecedores):
