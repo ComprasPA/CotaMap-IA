@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
-from anthropic import Anthropic
+import google.generativeai as genai
 import json
 import os
 
@@ -19,11 +19,11 @@ st.title("🛒 CotaMap - Mapa de Cotação Inteligente")
 st.markdown("**Empresa:** Parente Andrade Ltda | **Regime:** Lucro Real")
 st.divider()
 
-# 2. Configurações e Chave de API (Busca automática do ambiente ou manual na barra lateral)
-api_key_env = os.environ.get("ANTHROPIC_API_KEY", "")
+# 2. Configurações e Chave de API 
+api_key_env = os.environ.get("GEMINI_API_KEY", "")
 
 st.sidebar.header("⚙️ Configurações do Sistema")
-api_key = st.sidebar.text_input("Chave API da Anthropic (Claude):", value=api_key_env, type="password")
+api_key = st.sidebar.text_input("Chave API Gratuita (Google Gemini):", value=api_key_env, type="password")
 
 st.sidebar.markdown("---")
 icms_desc = st.sidebar.number_input("Desconto ICMS - SUFRAMA (%)", value=7.0, step=1.0)
@@ -31,12 +31,12 @@ pis_cofins = st.sidebar.number_input("Desconto PIS/COFINS (%)", value=9.25, step
 
 # 3. Área de Upload
 st.subheader("1. Anexar Cotações")
-st.info("Arraste os PDFs dos fornecedores. A Inteligência Artificial fará a leitura e o cruzamento dos itens.")
+st.info("Arraste os PDFs dos fornecedores. O Google Gemini fará a leitura e o cruzamento dos itens gratuitamente.")
 arquivos = st.file_uploader("Upload de Orçamentos (Apenas PDF)", type=["pdf"], accept_multiple_files=True)
 
 if arquivos:
     if not api_key:
-        st.warning("⚠️ Insira a sua Chave API da Anthropic na barra lateral para iniciar a leitura.")
+        st.warning("⚠️ Insira a sua Chave API do Gemini na barra lateral para iniciar a leitura.")
     else:
         if st.button("🤖 Processar PDFs e Gerar Mapa", type="primary"):
             with st.spinner("Lendo PDFs e cruzando itens com IA... Isso pode levar alguns segundos."):
@@ -55,12 +55,14 @@ if arquivos:
                     except Exception as e:
                         st.error(f"Erro ao ler o arquivo {arquivo.name}: {e}")
                 
-                # Chamando o Claude
+                # Configurando e Chamando o Gemini
+                genai.configure(api_key=api_key)
+                
                 prompt = f"""
-                Você é um especialista em compras industriais. Analise os textos das cotações abaixo.
+                Você é um especialista em suprimentos e compras industriais. Analise os textos das cotações abaixo.
                 Seu objetivo é padronizar os itens e criar um mapa comparativo. Cruze os itens que são iguais, mesmo que a descrição dos fornecedores mude um pouco.
 
-                Retorne APENAS um JSON estrito, sem formatação markdown, neste formato exato:
+                Retorne APENAS um JSON estrito, sem formatação markdown (sem ```json), neste formato exato:
                 {{
                   "fornecedores": ["Nome Fornecedor A", "Nome Fornecedor B"],
                   "itens": [
@@ -81,18 +83,20 @@ if arquivos:
                 """
                 
                 try:
-                    client = Anthropic(api_key=api_key)
-                    resposta = client.messages.create(
-                        model="claude-3-5-sonnet-20240620",
-                        max_tokens=4000,
-                        temperature=0.1,
-                        messages=[{"role": "user", "content": prompt}]
+                    # Usando o modelo flash, que é super rápido e ótimo para extração de texto
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    resposta = model.generate_content(
+                        prompt,
+                        generation_config=genai.GenerationConfig(
+                            response_mime_type="application/json",
+                            temperature=0.1
+                        )
                     )
                     
-                    dados_json = json.loads(resposta.content[0].text)
+                    dados_json = json.loads(resposta.text)
                     
                     # 4. Construindo a Tabela Dinâmica
-                    st.success("✅ Extração concluída com sucesso!")
+                    st.success("✅ Extração concluída com sucesso via Google Gemini!")
                     st.divider()
                     
                     st.subheader("2. Mapa de Cotação Estruturado")
